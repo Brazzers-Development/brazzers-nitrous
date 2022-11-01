@@ -3,7 +3,7 @@
 ## General Setup
 Advanced and unique nitrous system featuring flowrate, purge mode, and more all working on the synced version of qb-tunerchip's nitrous system. This script only includes the nitrous portion of the tunerchip script and not the tunerchip itself. The list of full features are down below
 
-Preview: [SOON]
+Preview: https://youtu.be/-cWlexmU0x8
 
 ## Installation Default QBCore Garages
 If you're to lazy to do this, I included the drag and drop of qb-inventory server.lua in the files lazy fuck
