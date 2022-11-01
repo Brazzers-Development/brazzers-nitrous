@@ -10,17 +10,17 @@ If you're to lazy to do this, I included the drag and drop of qb-inventory serve
 
 Locate your QBCore.Commands.Add("giveitem" command in your qb-inventory > main.lua and add the itemData snippet to it: 
 ```lua
-				elseif itemData["name"] == "nitrous" then
-					info.status = "Filled"
+	elseif itemData["name"] == "nitrous" then
+		info.status = "Filled"
 ```
 Locate FormatItemInfo function in your qb-inventory > html > js > app.js file and add the itemData snippet below:
 ```js
-        else if (itemData.name == "nitrous") {
-            $(".item-info-title").html("<p>" + itemData.label + "</p>");
-            $(".item-info-description").html(
-                "<p>" + itemData.info.status + " nitrous bottle</p>"
-            );
-        }
+    else if (itemData.name == "nitrous") {
+        $(".item-info-title").html("<p>" + itemData.label + "</p>");
+        $(".item-info-description").html(
+            "<p>" + itemData.info.status + " nitrous bottle</p>"
+        );
+    }
 ```
 
 ## Features
