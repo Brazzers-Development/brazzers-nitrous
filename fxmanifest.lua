@@ -26,4 +26,5 @@ escrow_ignore {
 	'server/*.lua',
 	'locales/*.lua',
 	'shared/*.lua',
+	'README/*lua',
 }
