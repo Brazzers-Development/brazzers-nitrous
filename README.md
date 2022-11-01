@@ -23,6 +23,9 @@ Locate FormatItemInfo function in your qb-inventory > html > js > app.js file an
     }
 ```
 
+## Credits
+Blue/ Purple Backfire included in the Download - https://www.gta5-mods.com/misc/purple-blue-flames-replace-sp-fivem
+
 ## Features
 1. Flowrate System - Allowing players to cycle nitrous/ purge flow rate effecting consumption, boost, and more!
 2. Ability To Increase & Decrease Flowrate On the Spot With A Keybind
