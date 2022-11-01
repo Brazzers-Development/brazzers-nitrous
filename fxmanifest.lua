@@ -20,3 +20,10 @@ shared_scripts {
 	'locales/*.lua',
 	'shared/*.lua',
 }
+
+escrow_ignore {
+    'client/*.lua',
+	'server/*.lua',
+	'locales/*.lua',
+	'shared/*.lua',
+}
