@@ -47,12 +47,12 @@ local function trim(value)
     return (string.gsub(value, '^%s*(.-)%s*$', '%1'))
 end
 
-local function CreateVehiclePurgeSpray(vehicle, xOffset, yOffset, zOffset, xRot, yRot, zRot)
+local function enablePurgeSpray(vehicle, xOffset, yOffset, zOffset, xRot, yRot, zRot)
 	UseParticleFxAssetNextCall('core')
 	return StartNetworkedParticleFxLoopedOnEntity('ent_sht_steam', vehicle, xOffset, yOffset, zOffset, xRot, yRot, zRot, Config.FlowRate[flowRate]['flow'], false, false, false)
 end
 
-local function SetVehicleNitroPurgeEnabled(vehicle, enabled)
+local function enablePurgeMode(vehicle, enabled)
 	if enabled then
 		local bone = GetEntityBoneIndexByName(vehicle, 'platelight')
 		local pos = GetWorldPositionOfEntityBone(vehicle, bone)
@@ -60,8 +60,8 @@ local function SetVehicleNitroPurgeEnabled(vehicle, enabled)
 		local ptfxs = {}
   
 	  	for i=0,3 do
-			local leftPurge = CreateVehiclePurgeSpray(vehicle, off.x - 0.69, off.y + 4.26, off.z - 0.40 , 35.0, -55.0, 0.0, 1.0)
-			local rightPurge = CreateVehiclePurgeSpray(vehicle, off.x + 0.69, off.y + 4.26, off.z - 0.40 , 35.0, 55.0, 0.0, 1.0)
+			local leftPurge = enablePurgeSpray(vehicle, off.x - 0.69, off.y + 4.26, off.z - 0.40 , 35.0, -55.0, 0.0, 1.0)
+			local rightPurge = enablePurgeSpray(vehicle, off.x + 0.69, off.y + 4.26, off.z - 0.40 , 35.0, 55.0, 0.0, 1.0)
 			SetParticleFxLoopedColour(leftPurge, 1.0, 1.0, 1.0)
 			SetParticleFxLoopedColour(rightPurge, 1.0, 1.0, 1.0)
 			table.insert(ptfxs, leftPurge)
@@ -79,6 +79,17 @@ local function SetVehicleNitroPurgeEnabled(vehicle, enabled)
 	  	VehiclePurge[vehicle] = nil
 	  	PurgeParticles[vehicle] = nil
 	end
+end
+
+local function hasNitrous()
+    PlayerData = QBCore.Functions.GetPlayerData()
+    if PlayerData.items then
+        for _, v in pairs(PlayerData.items) do
+            if v.name == Config.Nitrous then
+                return true
+            end
+        end
+    end
 end
 
 -- Keybinds/ Commands
@@ -113,24 +124,22 @@ end)
 RegisterKeyMapping("+decreaseflow", "Decrease Flow Rate", "keyboard", "DOWN")
 
 RegisterCommand("+cyclenitro", function()
-	local IsInVehicle = IsPedInAnyVehicle(PlayerPedId())
-	local CurrentVehicle = GetVehiclePedIsIn(PlayerPedId())
-	local Plate = trim(GetVehicleNumberPlateText(CurrentVehicle))
-	if IsInVehicle then
-		if VehicleNitrous[Plate] then
-			if VehicleNitrous[Plate].hasnitro then
-				if not purgeMode and nitroMode then
-					purgeMode = true
-					nitroMode = false
-					TriggerEvent("DoLongHudText", "Mode: Purge")
-				elseif not nitroMode and purgeMode then
-					nitroMode = true
-					purgeMode = false
-					TriggerEvent("DoLongHudText", "Mode: Nitrous")
-				end
-			end
-		end
-	end
+	local isInVehicle = IsPedInAnyVehicle(PlayerPedId())
+	local currentVehicle = GetVehiclePedIsIn(PlayerPedId())
+	local plate = trim(GetVehicleNumberPlateText(currentVehicle))
+    if not isInVehicle then return end
+    if not VehicleNitrous[plate] then return end
+    if not VehicleNitrous[plate].hasnitro then return end
+
+    if not purgeMode and nitroMode then
+        purgeMode = true
+        nitroMode = false
+        TriggerEvent("DoLongHudText", "Mode: Purge")
+    elseif not nitroMode and purgeMode then
+        nitroMode = true
+        purgeMode = false
+        TriggerEvent("DoLongHudText", "Mode: Nitrous")
+    end
 end)
 RegisterKeyMapping("+cyclenitro", "Cycle Modes", "keyboard", "LSHIFT")
 
@@ -143,52 +152,124 @@ RegisterNetEvent('QBCore:Client:OnPlayerLoaded', function()
 end)
 
 RegisterNetEvent('smallresource:client:LoadNitrous', function()
-    local IsInVehicle = IsPedInAnyVehicle(PlayerPedId())
-    local ped = PlayerPedId()
-    local veh = GetVehiclePedIsIn(ped)
+    local isInVehicle = IsPedInAnyVehicle(PlayerPedId())
+    local currentVehicle = GetVehiclePedIsIn(PlayerPedId())
+    local plate = trim(GetVehicleNumberPlateText(currentVehicle))
 
-    if not NitrousActivated then
-		if IsInVehicle and not IsThisModelABike(GetEntityModel(GetVehiclePedIsIn(ped))) then
-			if GetPedInVehicleSeat(veh, -1) == ped then
-				if IsToggleModOn(GetVehiclePedIsIn(ped, false), 18) then
-					if not GetIsVehicleEngineRunning(GetVehiclePedIsIn(ped, false)) then
-						QBCore.Functions.Progressbar("use_nos", "Connecting NOS...", 10000, false, true, {
-							disableMovement = false,
-							disableCarMovement = false,
-							disableMouse = false,
-							disableCombat = true,
-						}, {}, {}, {}, function() -- Done
-							if GetIsVehicleEngineRunning(GetVehiclePedIsIn(ped, false)) then QBCore.Functions.Notify("Engine must remain off to install", "error") return end
-							TriggerServerEvent('5life-nitrous:client:setNitrousBottle', 'Empty')
-							local CurrentVehicle = GetVehiclePedIsIn(PlayerPedId())
-							local Plate = trim(GetVehicleNumberPlateText(CurrentVehicle))
-							TriggerServerEvent('nitrous:server:LoadNitrous', Plate)
-						end)
-					else
-						QBCore.Functions.Notify("Engine must be off to install this", "error")
-					end
-				else
-					QBCore.Functions.Notify("You cannot install this yet", "error")
-				end
-			else
-				QBCore.Functions.Notify("You cannot do that from this seat!", "error")
-			end
-		end
-    else
-        QBCore.Functions.Notify('You Already Have NOS Active', 'error')
+    if not isInVehicle then return end
+    if GetPedInVehicleSeat(currentVehicle, -1) ~= ped then return end
+    if NitrousActivated then return QBCore.Functions.Notify('You Already Have NOS Active', 'error') end
+    if IsThisModelABike(GetEntityModel(currentVehicle)) then return QBCore.Functions.Notify('Cannot load nitrous in a bike', 'error') end
+    if not IsToggleModOn(currentVehicle, 18) then return QBCore.Functions.Notify('You must have turbo installed to load this bottle of nitrous', 'error') end
+    if GetIsVehicleEngineRunning(currentVehicle) then return QBCore.Functions.Notify('You can only load your bottle of nitrous with the engine off', 'error') end
+
+    QBCore.Functions.Progressbar("use_nos", "Connecting NOS...", Config.ConnectNitrous, false, true, {
+        disableMovement = false,
+        disableCarMovement = false,
+        disableMouse = false,
+        disableCombat = true,
+    }, {}, {}, {}, function()
+        if GetIsVehicleEngineRunning(currentVehicle) then return QBCore.Functions.Notify("Engine must remain off to install", "error") end
+        TriggerServerEvent('brazzers-nitrous:client:setNitrousBottle', 'Empty')
+        TriggerServerEvent('nitrous:server:LoadNitrous', plate)
+	end, function()
+		QBCore.Functions.Notify("Canceled", "error")
+    end)
+end)
+
+RegisterNetEvent('nitrous:client:StopSync', function(plate)
+    for _, v in pairs(NOSPFX[plate]) do
+        StopParticleFxLooped(v.pfx, 1)
+        NOSPFX[plate][_].pfx = nil
     end
 end)
 
-RegisterNetEvent('5life-nitrous:client:particlePurge', function (player, type)
+RegisterNetEvent('nitrous:client:UpdateNitroLevel', function(Plate, level)
+    VehicleNitrous[Plate].level = level
+end)
+
+RegisterNetEvent('nitrous:client:LoadNitrous', function(Plate)
+    VehicleNitrous[Plate] = {
+        hasnitro = true,
+        level = 100,
+    }
+    local CurrentVehicle = GetVehiclePedIsIn(PlayerPedId())
+    local CPlate = trim(GetVehicleNumberPlateText(CurrentVehicle))
+    if CPlate == Plate then
+        TriggerEvent('hud:client:UpdateNitrous', VehicleNitrous[Plate].hasnitro,  VehicleNitrous[Plate].level, false)
+    end
+end)
+
+RegisterNetEvent('nitrous:client:UnloadNitrous', function(Plate)
+    VehicleNitrous[Plate] = nil
+    local CurrentVehicle = GetVehiclePedIsIn(PlayerPedId())
+    local CPlate = trim(GetVehicleNumberPlateText(CurrentVehicle))
+    if CPlate == Plate then
+        NitrousActivated = false
+        TriggerEvent('hud:client:UpdateNitrous', false, nil, false)
+    end
+end)
+
+RegisterNetEvent('nitrous:client:SyncFlames', function(netid, nosid, coords, rate)
+    local veh = NetToVeh(netid)
+	local meCoords = GetEntityCoords(PlayerPedId())
+	local distance = #(coords - meCoords)
+	if distance < 200 then
+		if veh ~= 0 then
+			local myid = GetPlayerServerId(PlayerId())
+			if NOSPFX[trim(GetVehicleNumberPlateText(veh))] == nil then
+				NOSPFX[trim(GetVehicleNumberPlateText(veh))] = {}
+			end
+			if myid ~= nosid then
+				for _,bones in pairs(p_flame_location) do
+					if NOSPFX[trim(GetVehicleNumberPlateText(veh))][bones] == nil then
+						NOSPFX[trim(GetVehicleNumberPlateText(veh))][bones] = {}
+					end
+					if GetEntityBoneIndexByName(veh, bones) ~= -1 then
+						if NOSPFX[trim(GetVehicleNumberPlateText(veh))][bones].pfx == nil then
+							RequestNamedPtfxAsset(ParticleDict)
+							while not HasNamedPtfxAssetLoaded(ParticleDict) do
+								Wait(0)
+							end
+							SetPtfxAssetNextCall(ParticleDict)
+							UseParticleFxAssetNextCall(ParticleDict)
+							NOSPFX[trim(GetVehicleNumberPlateText(veh))][bones].pfx = StartParticleFxLoopedOnEntityBone(ParticleFx, veh, 0.0, -0.05, 0.0, 0.0, 0.0, 0.0, GetEntityBoneIndexByName(veh, bones), rate, 0.0, 0.0, 0.0)
+							SetVehicleBoostActive(veh, 1)
+						end
+					end
+				end
+			end
+		end
+	end
+end)
+
+RegisterNetEvent('brazzers-nitrous:client:particlePurge', function (player, type)
 	local src = GetPlayerFromServerId(player)
 	local player = GetPlayerPed(src)
 	local veh = GetVehiclePedIsIn(player, false)
 	if type then
-		SetVehicleNitroPurgeEnabled(veh, true)
+		enablePurgeMode(veh, true)
 	elseif not type then
-		SetVehicleNitroPurgeEnabled(veh, false)
+		enablePurgeMode(veh, false)
 	end
 end)
+
+RegisterNetEvent("brazzers-nitrous:client:refillNitrous", function()
+	if not hasNitrous() then return QBCore.Functions.Notify("You don\'t have any nitrous on you", "error") end
+
+	QBCore.Functions.Progressbar("filling_nitrous", "Filling Nitrous Bottle", 15000, false, false, {
+		  disableMovement = true,
+		  disableCarMovement = false,
+		  disableMouse = false,
+		  disableCombat = true,
+	}, {}, {}, {}, function()
+		TriggerServerEvent("brazzers-nitrous:client:setNitrousBottle", 'Filled')
+	end, function()
+		QBCore.Functions.Notify("Canceled", "error")
+	end)
+end)
+
+-- Threads
 
 CreateThread(function()
     while true do
@@ -230,7 +311,7 @@ CreateThread(function()
 						if IsControlJustPressed(0, 36) and GetPedInVehicleSeat(CurrentVehicle, -1) == PlayerPedId() then
 							SetVehicleBoostActive(CurrentVehicle, 1)
 							PurgeActivated = true
-							TriggerServerEvent('5life-nitrous:server:particlePurge', true)
+							TriggerServerEvent('brazzers-nitrous:server:particlePurge', true)
 
 							CreateThread(function()
 								while PurgeActivated do
@@ -271,7 +352,7 @@ CreateThread(function()
 					elseif purgeMode then
 						if IsControlJustReleased(0, 36) and GetPedInVehicleSeat(CurrentVehicle, -1) == PlayerPedId() then
 							if PurgeActivated then
-								TriggerServerEvent('5life-nitrous:server:particlePurge', false)
+								TriggerServerEvent('brazzers-nitrous:server:particlePurge', false)
 								TriggerEvent('hud:client:UpdateNitrous', VehicleNitrous[Plate].hasnitro,  VehicleNitrous[Plate].level, false)
 								PurgeActivated = false
 							end
@@ -329,100 +410,4 @@ CreateThread(function()
 		end
         Wait(0)
     end
-end)
-
-RegisterNetEvent('nitrous:client:SyncFlames', function(netid, nosid, coords, rate)
-    local veh = NetToVeh(netid)
-	local meCoords = GetEntityCoords(PlayerPedId())
-	local distance = #(coords - meCoords)
-	if distance < 200 then
-		if veh ~= 0 then
-			local myid = GetPlayerServerId(PlayerId())
-			if NOSPFX[trim(GetVehicleNumberPlateText(veh))] == nil then
-				NOSPFX[trim(GetVehicleNumberPlateText(veh))] = {}
-			end
-			if myid ~= nosid then
-				for _,bones in pairs(p_flame_location) do
-					if NOSPFX[trim(GetVehicleNumberPlateText(veh))][bones] == nil then
-						NOSPFX[trim(GetVehicleNumberPlateText(veh))][bones] = {}
-					end
-					if GetEntityBoneIndexByName(veh, bones) ~= -1 then
-						if NOSPFX[trim(GetVehicleNumberPlateText(veh))][bones].pfx == nil then
-							RequestNamedPtfxAsset(ParticleDict)
-							while not HasNamedPtfxAssetLoaded(ParticleDict) do
-								Wait(0)
-							end
-							SetPtfxAssetNextCall(ParticleDict)
-							UseParticleFxAssetNextCall(ParticleDict)
-							NOSPFX[trim(GetVehicleNumberPlateText(veh))][bones].pfx = StartParticleFxLoopedOnEntityBone(ParticleFx, veh, 0.0, -0.05, 0.0, 0.0, 0.0, 0.0, GetEntityBoneIndexByName(veh, bones), rate, 0.0, 0.0, 0.0)
-							SetVehicleBoostActive(veh, 1)
-						end
-					end
-				end
-			end
-		end
-	end
-end)
-
-RegisterNetEvent('nitrous:client:StopSync', function(plate)
-    for _, v in pairs(NOSPFX[plate]) do
-        StopParticleFxLooped(v.pfx, 1)
-        NOSPFX[plate][_].pfx = nil
-    end
-end)
-
-RegisterNetEvent('nitrous:client:UpdateNitroLevel', function(Plate, level)
-    VehicleNitrous[Plate].level = level
-end)
-
-RegisterNetEvent('nitrous:client:LoadNitrous', function(Plate)
-    VehicleNitrous[Plate] = {
-        hasnitro = true,
-        level = 100,
-    }
-    local CurrentVehicle = GetVehiclePedIsIn(PlayerPedId())
-    local CPlate = trim(GetVehicleNumberPlateText(CurrentVehicle))
-    if CPlate == Plate then
-        TriggerEvent('hud:client:UpdateNitrous', VehicleNitrous[Plate].hasnitro,  VehicleNitrous[Plate].level, false)
-    end
-end)
-
-RegisterNetEvent('nitrous:client:UnloadNitrous', function(Plate)
-    VehicleNitrous[Plate] = nil
-    local CurrentVehicle = GetVehiclePedIsIn(PlayerPedId())
-    local CPlate = trim(GetVehicleNumberPlateText(CurrentVehicle))
-    if CPlate == Plate then
-        NitrousActivated = false
-        TriggerEvent('hud:client:UpdateNitrous', false, nil, false)
-    end
-end)
-
--- Mechanic Refill
-
-local function hasNitrous()
-    PlayerData = QBCore.Functions.GetPlayerData()
-    if PlayerData.items then
-        for _, v in pairs(PlayerData.items) do
-            if v.name == 'nitrous' then
-                return true
-            end
-        end
-    end
-end
-
-RegisterNetEvent("5life-nitrous:client:refillNitrous", function()
-	if hasNitrous() then
-		TriggerEvent('animations:client:EmoteCommandStart', {"mechanic"})
-		QBCore.Functions.Progressbar("filling_nitrous", "Filling Nitrous Bottle", 15000, false, false, {
-		  	disableMovement = true,
-		  	disableCarMovement = false,
-		  	disableMouse = false,
-		  	disableCombat = true,
-		}, {}, {}, {}, function()
-		  	TriggerEvent('animations:client:EmoteCommandStart', {"c"})
-		  	TriggerServerEvent("5life-nitrous:client:setNitrousBottle", 'Filled')
-		end, function()
-		  	TriggerEvent('animations:client:EmoteCommandStart', {"c"})
-		end)
-	end
 end)
