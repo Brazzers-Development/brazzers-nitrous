@@ -155,17 +155,17 @@ RegisterNetEvent('smallresource:client:LoadNitrous', function()
     if not isInVehicle then return end
     if GetPedInVehicleSeat(currentVehicle, -1) ~= PlayerPedId() then return end
     if nitrousActivated then return QBCore.Functions.Notify(Lang:t("error.nitrous_already_active"), "error") end
-    if IsThisModelABike(GetEntityModel(currentVehicle)) then return QBCore.Functions.Notify(Lang:t("error.load_bike"), "error") end
-    if not IsToggleModOn(currentVehicle, 18) then return QBCore.Functions.Notify(Lang:t("error.no_turbo"), "error") end
-    if GetIsVehicleEngineRunning(currentVehicle) then return QBCore.Functions.Notify(Lang:t("error.engine_on"), "error") end
+    if Config.NoBikes and IsThisModelABike(GetEntityModel(currentVehicle)) then return QBCore.Functions.Notify(Lang:t("error.load_bike"), "error") end
+    if Config.TurboNeeded and not IsToggleModOn(currentVehicle, 18) then return QBCore.Functions.Notify(Lang:t("error.no_turbo"), "error") end
+    if Config.EngineOff and GetIsVehicleEngineRunning(currentVehicle) then return QBCore.Functions.Notify(Lang:t("error.engine_on"), "error") end
 
-    QBCore.Functions.Progressbar("use_nos", Lang:t("progessbar.load_nitrous"), Config.ConnectNitrous, false, true, {
+    QBCore.Functions.Progressbar("use_nos", Lang:t("progressbar.load_nitrous"), Config.ConnectNitrous, false, true, {
         disableMovement = false,
         disableCarMovement = false,
         disableMouse = false,
         disableCombat = true,
     }, {}, {}, {}, function()
-        if GetIsVehicleEngineRunning(currentVehicle) then return QBCore.Functions.Notify(Lang:t("error.engine_remain_off"), "error") end
+        if Config.EngineOff and GetIsVehicleEngineRunning(currentVehicle) then return QBCore.Functions.Notify(Lang:t("error.engine_remain_off"), "error") end
         TriggerServerEvent('brazzers-nitrous:client:setNitrousBottle', 'Empty')
         TriggerServerEvent('nitrous:server:LoadNitrous', plate)
 	end, function()
@@ -254,7 +254,7 @@ end)
 RegisterNetEvent("brazzers-nitrous:client:refillNitrous", function()
 	if not hasNitrous() then return QBCore.Functions.Notify(Lang:t("error.no_nitrous"), "error") end
 
-	QBCore.Functions.Progressbar("filling_nitrous", Lang:t("progessbar.fill_nitrous"), 15000, false, false, {
+	QBCore.Functions.Progressbar("filling_nitrous", Lang:t("progressbar.fill_nitrous"), 15000, false, false, {
 		  disableMovement = true,
 		  disableCarMovement = false,
 		  disableMouse = false,
@@ -385,7 +385,6 @@ CreateThread(function()
 					SetVehicleBoostActive(veh, 1)
 					nitroSoundEffect = true
 				end
-                --StartScreenEffect("RaceTurbo", 0.0, 0)
 
                 for _,bones in pairs(p_flame_location) do
                     if GetEntityBoneIndexByName(veh, bones) ~= -1 then
