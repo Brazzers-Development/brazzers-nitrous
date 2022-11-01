@@ -1,9 +1,22 @@
 local Translations = {
     error = {
-        not_in_vehicle = 'You must be in a vehicle to install a harness',
-        wrong_class = 'You cannot install a harness in this type of vehicle',
-        canceled_installation = 'Canceled installation',
-        already_installed = 'You already have a harness installed'
+        nitrous_already_active = 'You already have nitrous installed and activated',
+        load_bike = 'Cannot install nitrous on a bike',
+        no_turbo = 'You must have turbo installed to do this',
+        engine_on = 'You cannot install nitrous with the engine on',
+        canceled = 'Canceled',
+        engine_remain_off = 'Engine must remain off while you install nitrous',
+        no_nitrous = 'You don\'t have any nitrous on you',
+        empty_nitrous_bottle = 'This nitrous bottle is empty',
+    },
+    primary = {
+        flowrate = 'Nitrous Flowrate: %{value}',
+        mode_purge = 'Mode: Purge',
+        mode_nitrous = 'Mode: Nitrous',
+    },
+    progressbar = {
+        load_nitrous = 'Connecting NOS...',
+        fill_nitrous = 'Filling Nitrous Bottle',
     },
 }
 
