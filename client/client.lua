@@ -13,7 +13,6 @@ local NOSPFX = {}
 local VehicleNitrous = {}
 local Fxs = {}
 
-local VehiclePurge = {}
 local PurgeParticles = {}
 
 local flowRate = 5
@@ -68,7 +67,6 @@ local function enablePurgeMode(vehicle, enabled)
 			table.insert(ptfxs, rightPurge)
 	  	end
   
-		VehiclePurge[vehicle] = true
 		PurgeParticles[vehicle] = ptfxs
 	else
 	  	if PurgeParticles[vehicle] and #PurgeParticles[vehicle] > 0 then
@@ -76,13 +74,12 @@ local function enablePurgeMode(vehicle, enabled)
 		  		StopParticleFxLooped(particleId)
 			end
 	  	end
-	  	VehiclePurge[vehicle] = nil
 	  	PurgeParticles[vehicle] = nil
 	end
 end
 
 local function hasNitrous()
-    PlayerData = QBCore.Functions.GetPlayerData()
+    local PlayerData = QBCore.Functions.GetPlayerData()
     if PlayerData.items then
         for _, v in pairs(PlayerData.items) do
             if v.name == Config.Nitrous then
@@ -157,7 +154,7 @@ RegisterNetEvent('smallresource:client:LoadNitrous', function()
     local plate = trim(GetVehicleNumberPlateText(currentVehicle))
 
     if not isInVehicle then return end
-    if GetPedInVehicleSeat(currentVehicle, -1) ~= ped then return end
+    if GetPedInVehicleSeat(currentVehicle, -1) ~= PlayerPedId() then return end
     if NitrousActivated then return QBCore.Functions.Notify('You Already Have NOS Active', 'error') end
     if IsThisModelABike(GetEntityModel(currentVehicle)) then return QBCore.Functions.Notify('Cannot load nitrous in a bike', 'error') end
     if not IsToggleModOn(currentVehicle, 18) then return QBCore.Functions.Notify('You must have turbo installed to load this bottle of nitrous', 'error') end
@@ -243,10 +240,10 @@ RegisterNetEvent('nitrous:client:SyncFlames', function(netid, nosid, coords, rat
 	end
 end)
 
-RegisterNetEvent('brazzers-nitrous:client:particlePurge', function (player, type)
+RegisterNetEvent('brazzers-nitrous:client:particlePurge', function(player, type)
 	local src = GetPlayerFromServerId(player)
-	local player = GetPlayerPed(src)
-	local veh = GetVehiclePedIsIn(player, false)
+	local ped = GetPlayerPed(src)
+	local veh = GetVehiclePedIsIn(ped, false)
 	if type then
 		enablePurgeMode(veh, true)
 	elseif not type then
@@ -295,7 +292,7 @@ CreateThread(function()
 										nitroSoundEffect = false
 										PurgeActivated = false
 										SetVehicleBoostActive(CurrentVehicle, 0)
-										SetVehicleEnginePowerMultiplier(CurrentVehicle, LastEngineMultiplier)
+										SetVehicleEnginePowerMultiplier(CurrentVehicle, Config.FlowRate[flowRate]['boost'])
 										StopScreenEffect("RaceTurbo")
 										for index,_ in pairs(Fxs) do
 											StopParticleFxLooped(Fxs[index], 1)
@@ -337,7 +334,7 @@ CreateThread(function()
 							if NitrousActivated then
 								local veh = GetVehiclePedIsIn(PlayerPedId())
 								SetVehicleBoostActive(veh, 0)
-								SetVehicleEnginePowerMultiplier(veh, LastEngineMultiplier)
+								SetVehicleEnginePowerMultiplier(veh, Config.FlowRate[flowRate]['boost'])
 								for index,_ in pairs(Fxs) do
 									StopParticleFxLooped(Fxs[index], 1)
 									TriggerServerEvent('nitrous:server:StopSync', trim(GetVehicleNumberPlateText(veh)))
