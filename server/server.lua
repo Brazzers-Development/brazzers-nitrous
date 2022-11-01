@@ -1,4 +1,4 @@
-QBCore = exports[Config.Core]:GetCoreObject()
+local QBCore = exports[Config.Core]:GetCoreObject()
 
 RegisterNetEvent('nitrous:server:LoadNitrous', function(Plate)
     TriggerClientEvent('nitrous:client:LoadNitrous', -1, Plate)
@@ -28,18 +28,18 @@ RegisterServerEvent("brazzers-nitrous:client:setNitrousBottle", function(info)
     local src = source
     local Player = QBCore.Functions.GetPlayer(src)
     if not Player then return end
-    local item = Player.Functions.GetItemByName('nitrous')
+    local item = Player.Functions.GetItemByName(Config.Nitrous)
     if not item then return end
 
     Player.PlayerData.items[item.slot].info.status = info
     Player.Functions.SetInventory(Player.PlayerData.items)
 end)
 
-QBCore.Functions.CreateUseableItem("nitrous", function(source, item)
+QBCore.Functions.CreateUseableItem(Config.Nitrous, function(source, item)
     local src = source
     local Player = QBCore.Functions.GetPlayer(src)
     local info = Player.PlayerData.items[item.slot].info.status
-    if info ~= 'Filled' then return TriggerClientEvent('QBCore:Notify', src, 'This nitrous bottle is empty', 'error') end
+    if info ~= 'Filled' then return TriggerClientEvent('QBCore:Notify', src, Lang:t("error.empty_nitrous_bottle"), 'error') end
 
     TriggerClientEvent('smallresource:client:LoadNitrous', src)
 end)
