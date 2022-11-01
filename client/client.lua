@@ -292,7 +292,7 @@ CreateThread(function()
 										nitroSoundEffect = false
 										purgeActivated = false
 										SetVehicleBoostActive(CurrentVehicle, 0)
-										SetVehicleEnginePowerMultiplier(CurrentVehicle, Config.FlowRate[flowRate]['boost'])
+										SetVehicleEnginePowerMultiplier(CurrentVehicle, 1.0)
 										StopScreenEffect("RaceTurbo")
 										for index,_ in pairs(Fxs) do
 											StopParticleFxLooped(Fxs[index], 1)
@@ -334,7 +334,7 @@ CreateThread(function()
 							if nitrousActivated then
 								local veh = GetVehiclePedIsIn(PlayerPedId())
 								SetVehicleBoostActive(veh, 0)
-								SetVehicleEnginePowerMultiplier(veh, Config.FlowRate[flowRate]['boost'])
+								SetVehicleEnginePowerMultiplier(veh, 1.0)
 								for index,_ in pairs(Fxs) do
 									StopParticleFxLooped(Fxs[index], 1)
 									TriggerServerEvent('nitrous:server:StopSync', trim(GetVehicleNumberPlateText(veh)))
@@ -407,3 +407,24 @@ CreateThread(function()
         Wait(0)
     end
 end)
+
+exports[Config.Target]:SpawnPed({
+    model = Config.Ped,
+    coords = Config.PedLocation,
+    minusOne = true,
+    freeze = true,
+    invincible = true,
+    blockevents = true,
+    scenario = 'WORLD_HUMAN_GUARD_STAND',
+    target = {
+        options = {
+            {
+                type = "client",
+                event = "brazzers-nitrous:client:refillNitrous",
+                icon = "fas fa-fill",
+                label = "Refill Nitrous",
+            }
+        },
+        distance = 2.5,
+    },
+})

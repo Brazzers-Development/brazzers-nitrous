@@ -1,14 +1,19 @@
 Config = Config or {}
 
 Config.Core = 'qb-core'
+Config.Target = 'qb-target'
 Config.Nitrous = 'nitrous' -- Nitrous item name
 
 -- SETTINGS
 Config.ConnectNitrous = 5000 -- Time in miliseconds it takes to connect the bottle of nitrous (ProgressBar)
-Config.TurboNeeded = false -- Toggle if you want turbo required to be on the vehicle to install a nitrous bottle
-Config.NoBikes = true -- Toggle if you want nitrous on bikes
-Config.EngineOff = false -- Toggle if you require the engine to be off to install nitrous
+Config.TurboNeeded = true -- Toggle if you want turbo required to be on the vehicle to install a nitrous bottle
+Config.NoBikes = false -- Toggle if you want nitrous on bikes
+Config.EngineOff = true -- Toggle if you require the engine to be off to install nitrous
 Config.DecreaseMultiplier = 2 -- Multiplier for consumption ( Increase = more | Decrease = less )
+
+-- PED
+Config.Ped = 'mp_m_waremech_01' -- Ped Model
+Config.PedLocation = vector4(-40.56, -1082.01, 26.6, 70.86) -- Ped Location
 
 -- Config for flow rate ( 10 stages ) | Only modify if you know what you're doing
 Config.FlowRate = {
