@@ -1,14 +1,5 @@
 QBCore = exports[Config.Core]:GetCoreObject()
 
-QBCore.Functions.CreateUseableItem("nitrous", function(source, item)
-    local src = source
-    local Player = QBCore.Functions.GetPlayer(src)
-    local shitter = Player.PlayerData.items[item.slot].info.status
-    if shitter == "Filled" then
-        TriggerClientEvent('smallresource:client:LoadNitrous', source)
-    end
-end)
-
 RegisterNetEvent('nitrous:server:LoadNitrous', function(Plate)
     TriggerClientEvent('nitrous:client:LoadNitrous', -1, Plate)
 end)
@@ -29,14 +20,26 @@ RegisterNetEvent('nitrous:server:StopSync', function(plate)
     TriggerClientEvent('nitrous:client:StopSync', -1, plate)
 end)
 
-RegisterServerEvent('5life-nitrous:server:particlePurge', function(data)
-    TriggerClientEvent('5life-nitrous:client:particlePurge', -1, source, data)
+RegisterServerEvent('brazzers-nitrous:server:particlePurge', function(data)
+    TriggerClientEvent('brazzers-nitrous:client:particlePurge', -1, source, data)
 end)
 
-RegisterServerEvent("5life-nitrous:client:setNitrousBottle", function(info)
+RegisterServerEvent("brazzers-nitrous:client:setNitrousBottle", function(info)
     local src = source
     local Player = QBCore.Functions.GetPlayer(src)
+    if not Player then return end
     local item = Player.Functions.GetItemByName('nitrous')
+    if not item then return end
+
     Player.PlayerData.items[item.slot].info.status = info
     Player.Functions.SetInventory(Player.PlayerData.items)
+end)
+
+QBCore.Functions.CreateUseableItem("nitrous", function(source, item)
+    local src = source
+    local Player = QBCore.Functions.GetPlayer(src)
+    local info = Player.PlayerData.items[item.slot].info.status
+    if info ~= 'Filled' then return TriggerClientEvent('QBCore:Notify', src, 'This nitrous bottle is empty', 'error') end
+
+    TriggerClientEvent('smallresource:client:LoadNitrous', src)
 end)
