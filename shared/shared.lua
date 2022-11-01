@@ -1,6 +1,10 @@
 Config = Config or {}
 
 Config.Core = 'qb-core'
+-- Nitrous item name
+Config.Nitrous = 'nitrous'
+-- Time in miliseconds it takes to connect the bottle of nitrous (ProgressBar)
+Config.ConnectNitrous = 5000
 -- Multiplier for consumption ( Increase = more | Decrease = less )
 Config.DecreaseMultiplier = 2
 -- Config for flow rate ( 10 stages ) | Only modify if you know what you're doing
