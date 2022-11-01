@@ -1,18 +1,21 @@
 Config = Config or {}
 
 Config.Core = 'qb-core'
--- Nitrous item name
-Config.Nitrous = 'nitrous'
--- Time in miliseconds it takes to connect the bottle of nitrous (ProgressBar)
-Config.ConnectNitrous = 5000
--- Multiplier for consumption ( Increase = more | Decrease = less )
-Config.DecreaseMultiplier = 2
+Config.Nitrous = 'nitrous' -- Nitrous item name
+
+-- SETTINGS
+Config.ConnectNitrous = 5000 -- Time in miliseconds it takes to connect the bottle of nitrous (ProgressBar)
+Config.TurboNeeded = false -- Toggle if you want turbo required to be on the vehicle to install a nitrous bottle
+Config.NoBikes = true -- Toggle if you want nitrous on bikes
+Config.EngineOff = false -- Toggle if you require the engine to be off to install nitrous
+Config.DecreaseMultiplier = 2 -- Multiplier for consumption ( Increase = more | Decrease = less )
+
 -- Config for flow rate ( 10 stages ) | Only modify if you know what you're doing
 Config.FlowRate = {
     [1] = {
         ['flow'] = 0.3,
         ['boost'] = 5.0,
-        ['consumption'] = 0.1,
+        ['consumption'] = 0.15,
     },
     [2] = {
         ['flow'] = 0.4,
@@ -22,41 +25,41 @@ Config.FlowRate = {
     [3] = {
         ['flow'] = 0.4,
         ['boost'] = 10.0,
-        ['consumption'] = 0.3,
+        ['consumption'] = 0.25,
     },
     [4] = {
         ['flow'] = 0.5,
         ['boost'] = 13.0,
-        ['consumption'] = 0.4,
+        ['consumption'] = 0.3,
     },
     [5] = {
         ['flow'] = 0.6,
         ['boost'] = 15.0,
-        ['consumption'] = 0.5,
+        ['consumption'] = 0.35,
     },
     [6] = {
         ['flow'] = 0.7,
         ['boost'] = 17.0,
-        ['consumption'] = 0.6,
+        ['consumption'] = 0.4,
     },
     [7] = {
         ['flow'] = 0.8,
         ['boost'] = 20.0,
-        ['consumption'] = 0.7,
+        ['consumption'] = 0.45,
     },
     [8] = {
         ['flow'] = 1.0,
         ['boost'] = 23.0,
-        ['consumption'] = 0.8,
+        ['consumption'] = 0.5,
     },
     [9] = {
         ['flow'] = 1.2,
         ['boost'] = 26.0,
-        ['consumption'] = 0.9,
+        ['consumption'] = 0.55,
     },
     [10] = {
         ['flow'] = 1.4,
         ['boost'] = 30.0,
-        ['consumption'] = 1.0,
+        ['consumption'] = 0.6,
     },
 }
