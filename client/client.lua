@@ -95,6 +95,7 @@ RegisterCommand("+increaseflow", function()
 	local currentVehicle = GetVehiclePedIsIn(PlayerPedId())
 	local plate = trim(GetVehicleNumberPlateText(currentVehicle))
     if not isInVehicle then return end
+	if not VehicleNitrous[plate] then return end
     if not VehicleNitrous[plate].hasnitro then return end
     if flowRate > 9 then return end
 
