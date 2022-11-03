@@ -12,6 +12,7 @@ Config.EngineOff = true -- Toggle if you require the engine to be off to install
 Config.DecreaseMultiplier = 2 -- Multiplier for consumption ( Increase = more | Decrease = less )
 
 -- PED
+Config.EnablePed = true -- Enable ped to refill locations
 Config.Ped = 'mp_m_waremech_01' -- Ped Model
 Config.PedLocation = vector4(-40.56, -1082.01, 26.6, 70.86) -- Ped Location
 

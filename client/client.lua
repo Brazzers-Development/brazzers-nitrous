@@ -409,23 +409,25 @@ CreateThread(function()
     end
 end)
 
-exports[Config.Target]:SpawnPed({
-    model = Config.Ped,
-    coords = Config.PedLocation,
-    minusOne = true,
-    freeze = true,
-    invincible = true,
-    blockevents = true,
-    scenario = 'WORLD_HUMAN_GUARD_STAND',
-    target = {
-        options = {
-            {
-                type = "client",
-                event = "brazzers-nitrous:client:refillNitrous",
-                icon = "fas fa-fill",
-                label = "Refill Nitrous",
-            }
-        },
-        distance = 2.5,
-    },
-})
+if Config.EnablePed then
+	exports[Config.Target]:SpawnPed({
+		model = Config.Ped,
+		coords = Config.PedLocation,
+		minusOne = true,
+		freeze = true,
+		invincible = true,
+		blockevents = true,
+		scenario = 'WORLD_HUMAN_GUARD_STAND',
+		target = {
+			options = {
+				{
+					type = "client",
+					event = "brazzers-nitrous:client:refillNitrous",
+					icon = "fas fa-fill",
+					label = "Refill Nitrous",
+				}
+			},
+			distance = 2.5,
+		},
+	})
+end
