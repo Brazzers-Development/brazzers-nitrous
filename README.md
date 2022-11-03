@@ -1,5 +1,4 @@
 ![Brazzers Development Discord](https://i.imgur.com/nXhPxIO.png)
-![Brazzers Development Ko-Fi](https://i.imgur.com/OsbRbGv.png)
 
 <details>
     <summary><b>Important Links</b></summary>
