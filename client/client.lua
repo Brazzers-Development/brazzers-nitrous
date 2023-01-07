@@ -240,15 +240,13 @@ RegisterNetEvent('nitrous:client:SyncFlames', function(netid, nosid, coords, rat
 	end
 end)
 
-RegisterNetEvent('brazzers-nitrous:client:particlePurge', function(player, type)
-	local src = GetPlayerFromServerId(player)
-	local ped = GetPlayerPed(src)
-	local veh = GetVehiclePedIsIn(ped, false)
-	local plate = trim(GetVehicleNumberPlateText(veh))
-	if type then
-		enablePurgeMode(veh, plate, true)
-	elseif not type then
-		enablePurgeMode(veh, plate, false)
+RegisterNetEvent('brazzers-nitrous:client:particlePurge', function(netId, purgeid, coords, toggle)
+	local veh = NetToVeh(netId)
+	local meCoords = GetEntityCoords(PlayerPedId())
+	local distance = #(coords - meCoords)
+	if distance < 200 then
+		local plate = trim(GetVehicleNumberPlateText(veh))
+		enablePurgeMode(veh, plate, toggle)
 	end
 end)
 
@@ -309,7 +307,7 @@ CreateThread(function()
 						if IsControlJustPressed(0, 36) and GetPedInVehicleSeat(CurrentVehicle, -1) == PlayerPedId() then
 							SetVehicleBoostActive(CurrentVehicle, 1)
 							purgeActivated = true
-							TriggerServerEvent('brazzers-nitrous:server:particlePurge', true)
+							TriggerServerEvent('brazzers-nitrous:server:particlePurge', VehToNet(CurrentVehicle), GetEntityCoords(PlayerPedId()), true)
 
 							CreateThread(function()
 								while purgeActivated do
@@ -350,7 +348,7 @@ CreateThread(function()
 					elseif purgeMode then
 						if IsControlJustReleased(0, 36) and GetPedInVehicleSeat(CurrentVehicle, -1) == PlayerPedId() then
 							if purgeActivated then
-								TriggerServerEvent('brazzers-nitrous:server:particlePurge', false)
+								TriggerServerEvent('brazzers-nitrous:server:particlePurge', VehToNet(CurrentVehicle), GetEntityCoords(PlayerPedId()), false)
 								TriggerEvent('hud:client:UpdateNitrous', VehicleNitrous[plate].hasnitro,  VehicleNitrous[plate].level, false)
 								purgeActivated = false
 							end

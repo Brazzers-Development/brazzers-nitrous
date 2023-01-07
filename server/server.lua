@@ -50,8 +50,8 @@ RegisterNetEvent('nitrous:server:StopSync', function(plate)
     TriggerClientEvent('nitrous:client:StopSync', -1, plate)
 end)
 
-RegisterServerEvent('brazzers-nitrous:server:particlePurge', function(data)
-    TriggerClientEvent('brazzers-nitrous:client:particlePurge', -1, source, data)
+RegisterServerEvent('brazzers-nitrous:server:particlePurge', function(netId, coords, data)
+    TriggerClientEvent('brazzers-nitrous:client:particlePurge', -1, netId, source, coords, data)
 end)
 
 RegisterServerEvent("brazzers-nitrous:client:setNitrousBottle", function(info)
