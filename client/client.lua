@@ -1,431 +1,368 @@
-local QBCore = exports[Config.Core]:GetCoreObject()
-
-local purgeMode = false
-local nitroMode = true
-
-local nosUpdated = false
-local nitroSoundEffect = false
-
-local nitrousActivated = false
-local purgeActivated = false
-
-local NOSPFX = {}
-local VehicleNitrous = {}
-local PurgeEffects = {}
-local Fxs = {}
-
-local flowRate = 5
-
-p_flame_location = {
-	"exhaust",
-	"exhaust_2",
-	"exhaust_3",
-	"exhaust_4",
-	"exhaust_5",
-	"exhaust_6",
-	"exhaust_7",
-	"exhaust_8",
-	"exhaust_9",
-	"exhaust_10",
-	"exhaust_11",
-	"exhaust_12",
-	"exhaust_13",
-	"exhaust_14",
-	"exhaust_15",
-	"exhaust_16",
-}
-
-ParticleDict = "veh_xs_vehicle_mods"
-ParticleFx = "veh_nitrous"
+local vehicle
+local activated, purging, screen = false, false, false
+local noslvl, purgelvl, flowrate, nitrousMode = 0.0, 0.0, 0.0, false
+local player, isInVehicle, isEnteringVehicle = PlayerId(), false, false
+local purge = {}
 
 -- Functions
 
-local function trim(value)
-	if not value then return nil end
-    return (string.gsub(value, '^%s*(.-)%s*$', '%1'))
-end
-
-local function enablePurgeSpray(vehicle, xOffset, yOffset, zOffset, xRot, yRot, zRot)
-	UseParticleFxAssetNextCall('core')
-	return StartNetworkedParticleFxLoopedOnEntity('ent_sht_steam', vehicle, xOffset, yOffset, zOffset, xRot, yRot, zRot, Config.FlowRate[flowRate]['flow'], false, false, false)
-end
-
-local function enablePurgeMode(vehicle, plate, enabled)
-	if enabled then
-		local bone = GetEntityBoneIndexByName(vehicle, 'platelight')
-		local pos = GetWorldPositionOfEntityBone(vehicle, bone)
-		local off = GetOffsetFromEntityGivenWorldCoords(vehicle, pos.x, pos.y, pos.z)
-		local ptfxs = {}
-  
-	  	for i=0,3 do
-			local leftPurge = enablePurgeSpray(vehicle, off.x - 0.69, off.y + 4.26, off.z - 0.40 , 35.0, -55.0, 0.0, 1.0)
-			local rightPurge = enablePurgeSpray(vehicle, off.x + 0.69, off.y + 4.26, off.z - 0.40 , 35.0, 55.0, 0.0, 1.0)
-			SetParticleFxLoopedColour(leftPurge, 1.0, 1.0, 1.0)
-			SetParticleFxLoopedColour(rightPurge, 1.0, 1.0, 1.0)
-			table.insert(ptfxs, leftPurge)
-			table.insert(ptfxs, rightPurge)
-	  	end
-  
-		PurgeEffects[plate] = ptfxs
-	else
-	  	if PurgeEffects[plate] and #PurgeEffects[plate] > 0 then
-			for _, particleId in ipairs(PurgeEffects[plate]) do
-		  		StopParticleFxLooped(particleId)
-			end
-	  	end
-	  	PurgeEffects[plate] = nil
-	end
-end
-
-local function hasNitrous()
-    local PlayerData = QBCore.Functions.GetPlayerData()
-    if PlayerData.items then
-        for _, v in pairs(PlayerData.items) do
-            if v.name == Config.Nitrous then
-                return true
-            end
-        end
+function hasNitrous(vehicle)
+    if not DecorExistOn(vehicle, "BRAZZERS_NITRO_STATUS") then
+        return false
     end
+    return DecorGetBool(vehicle, "BRAZZERS_NITRO_STATUS")
+end exports('hasNitrous', hasNitrous)
+
+function setNitrous(vehicle, status)
+    DecorSetBool(vehicle, "BRAZZERS_NITRO_STATUS", status)
+end exports('setNitrous', setNitrous)
+
+function getValuesNOS(vehicle)
+    return DecorGetFloat(vehicle, "BRAZZERS_NITRO_NOS"), DecorGetFloat(vehicle, "BRAZZERS_NITRO_PURGE"), DecorGetFloat(vehicle, "BRAZZERS_FLOWRATE")
+end exports('getValuesNOS', getValuesNOS)
+
+function getCurrentMode(vehicle)
+    if not DecorExistOn(vehicle, "BRAZZERS_MODE") then
+        return false
+    end
+    return DecorGetBool(vehicle, "BRAZZERS_MODE")
 end
 
--- Keybinds/ Commands
+function installNitrous(vehicle)
+    setNitrous(vehicle, true)
+    DecorSetFloat(vehicle, "BRAZZERS_NITRO_NOS", 100.0)
+    DecorSetFloat(vehicle, "BRAZZERS_NITRO_PURGE", 0.0)
+    DecorSetFloat(vehicle, "BRAZZERS_FLOWRATE", 5.0)
+    updateUI(true, 100.0)
+end
+
+function setNitrousLevel(vehicle, lvl)
+    local formattedNumber = lvl + 0.0 -- Add 0.0 to convert it to a float
+    setNitrous(vehicle, true)
+    DecorSetFloat(vehicle, "BRAZZERS_NITRO_NOS", formattedNumber)
+    DecorSetFloat(vehicle, "BRAZZERS_NITRO_PURGE", 0.0)
+    DecorSetFloat(vehicle, "BRAZZERS_FLOWRATE", 5.0)
+end exports('setNitrousLevel', setNitrousLevel)
+
+-- Commands
+
+RegisterCommand("+changeMode", function()
+    vehicle = GetVehiclePedIsIn(cache.ped)
+    if vehicle == 0 then return end
+    local seatPed = GetPedInVehicleSeat(vehicle, -1)
+    if seatPed ~= cache.ped then return end
+    if not hasNitrous(vehicle) then return end
+
+    nitrousMode = getCurrentMode(vehicle)
+    if nitrousMode then
+        DecorSetBool(vehicle, "BRAZZERS_MODE", false)
+        notification(Config.Language.modepurge, "primary", 5000)
+    elseif not nitrousMode then
+        DecorSetBool(vehicle, "BRAZZERS_MODE", true)
+        notification(Config.Language.modenitrous, "primary", 5000)
+    end
+
+    Wait(500)
+end)
+RegisterKeyMapping("+changeMode", "Vehicle: Change Nitrous Mode", "keyboard", "LSHIFT")
+
+RegisterCommand("+activateNos", function()
+    if not IsControlPressed(0, 71) then Wait(10) end
+
+    vehicle = GetVehiclePedIsIn(cache.ped)
+    if vehicle == 0 then return end
+    local seatPed = GetPedInVehicleSeat(vehicle, -1)
+    if seatPed ~= cache.ped then return end
+    if not hasNitrous(vehicle) then return end
+
+    nitrousMode = getCurrentMode(vehicle)
+    if nitrousMode then
+        lib.requestNamedPtfxAsset('veh_xs_vehicle_mods', 10)
+
+        activated = true
+        EnableVehicleExhaustPops(vehicle, false)
+        SetVehicleBoostActive(vehicle, activated)
+        TriggerServerEvent("brazzers-nitrous:flames", true)
+    elseif not nitrousMode then
+        purging = true
+        TriggerServerEvent("brazzers-nitrous:setPurge", true)
+    end
+end, false)
+
+RegisterCommand("-activateNos", function()
+    vehicle = GetVehiclePedIsIn(cache.ped)
+    if vehicle == 0 then return end
+    local seatPed = GetPedInVehicleSeat(vehicle, -1)
+    if seatPed ~= cache.ped then return end
+    if not hasNitrous(vehicle) then return end
+
+    nitrousMode = getCurrentMode(vehicle)
+    if nitrousMode then
+        activated = false
+        TriggerServerEvent("brazzers-nitrous:flames", false)
+        SetVehicleBoostActive(vehicle, activated)
+        SetVehicleCheatPowerIncrease(vehicle, 1.0)
+
+        screen = false
+        StopGameplayCamShaking(true)
+        SetTransitionTimecycleModifier("default", 0.35)
+        Wait(1000)
+        EnableVehicleExhaustPops(vehicle, true)
+    elseif not nitrousMode then
+        purging = false
+        TriggerServerEvent("brazzers-nitrous:setPurge", false)
+    end
+end, false)
+RegisterKeyMapping("+activateNos", "Vehicle: Activate Nitrous or Purge", "keyboard", "LCONTROL")
 
 RegisterCommand("+increaseflow", function()
-	local isInVehicle = IsPedInAnyVehicle(PlayerPedId())
-	local currentVehicle = GetVehiclePedIsIn(PlayerPedId())
-	local plate = trim(GetVehicleNumberPlateText(currentVehicle))
-    if not isInVehicle then return end
-	if not VehicleNitrous[plate] then return end
-    if not VehicleNitrous[plate].hasnitro then return end
-    if flowRate > 9 then return end
+    vehicle = GetVehiclePedIsIn(cache.ped)
+    if vehicle == 0 then return end
+    local seatPed = GetPedInVehicleSeat(vehicle, -1)
+    if seatPed ~= cache.ped then return end
+    if not hasNitrous(vehicle) then return end
 
-    flowRate = flowRate + 1
-	QBCore.Functions.Notify(Lang:t("primary.flowrate", { value = flowRate}), "primary", 5000)
+	noslvl, purgelvl, flowrate = getValuesNOS(vehicle)
+	if flowrate >= 10.0 then return end
+
+	flowrate += 1.0
+	DecorSetFloat(vehicle, "BRAZZERS_FLOWRATE", flowrate)
+    notification(Config.Language.flowrate..flowrate / 10, 'primary', 5000)
     Wait(500)
 end)
-RegisterKeyMapping("+increaseflow", "Increase Flow Rate", "keyboard", "UP")
+RegisterKeyMapping("+increaseflow", "Vehicle: Increase Flow Rate", "keyboard", "UP")
 
 RegisterCommand("+decreaseflow", function()
-	local isInVehicle = IsPedInAnyVehicle(PlayerPedId())
-	local currentVehicle = GetVehiclePedIsIn(PlayerPedId())
-	local plate = trim(GetVehicleNumberPlateText(currentVehicle))
-    if not isInVehicle then return end
-    if not VehicleNitrous[plate] then return end
-    if not VehicleNitrous[plate].hasnitro then return end
-    if flowRate < 2 then return end
+    vehicle = GetVehiclePedIsIn(cache.ped)
+    if vehicle == 0 then return end
+    local seatPed = GetPedInVehicleSeat(vehicle, -1)
+    if seatPed ~= cache.ped then return end
+    if not hasNitrous(vehicle) then return end
+	if flowrate <= 1.0 then return end
 
-    flowRate = flowRate - 1
-	QBCore.Functions.Notify(Lang:t("primary.flowrate", { value = flowRate}), "primary", 5000)
+	noslvl, purgelvl, flowrate = getValuesNOS(vehicle)
+	flowrate -= 1.0
+	DecorSetFloat(vehicle, "BRAZZERS_FLOWRATE", flowrate)
+    notification(Config.Language.flowrate..flowrate / 10, 'primary', 5000)
     Wait(500)
 end)
-RegisterKeyMapping("+decreaseflow", "Decrease Flow Rate", "keyboard", "DOWN")
-
-RegisterCommand("+cyclenitro", function()
-	local isInVehicle = IsPedInAnyVehicle(PlayerPedId())
-	local currentVehicle = GetVehiclePedIsIn(PlayerPedId())
-	local plate = trim(GetVehicleNumberPlateText(currentVehicle))
-    if not isInVehicle then return end
-    if not VehicleNitrous[plate] then return end
-    if not VehicleNitrous[plate].hasnitro then return end
-
-    if not purgeMode and nitroMode then
-        purgeMode = true
-        nitroMode = false
-		QBCore.Functions.Notify(Lang:t("primary.mode_purge"), "primary", 2500)
-    elseif not nitroMode and purgeMode then
-        nitroMode = true
-        purgeMode = false
-        QBCore.Functions.Notify(Lang:t("primary.mode_nitrous"), "primary", 2500)
-    end
-end)
-RegisterKeyMapping("+cyclenitro", "Cycle Modes", "keyboard", "LSHIFT")
-
--- Net Events
-
-RegisterNetEvent('QBCore:Client:OnPlayerLoaded', function()
-    QBCore.Functions.TriggerCallback('nitrous:GetNosLoadedVehs', function(vehs)
-        VehicleNitrous = vehs
-    end)
-end)
-
-RegisterNetEvent('smallresource:client:LoadNitrous', function()
-    local isInVehicle = IsPedInAnyVehicle(PlayerPedId())
-    local currentVehicle = GetVehiclePedIsIn(PlayerPedId())
-    local plate = trim(GetVehicleNumberPlateText(currentVehicle))
-
-    if not isInVehicle then return end
-    if GetPedInVehicleSeat(currentVehicle, -1) ~= PlayerPedId() then return end
-    if nitrousActivated then return QBCore.Functions.Notify(Lang:t("error.nitrous_already_active"), "error") end
-    if Config.NoBikes and IsThisModelABike(GetEntityModel(currentVehicle)) then return QBCore.Functions.Notify(Lang:t("error.load_bike"), "error") end
-    if Config.TurboNeeded and not IsToggleModOn(currentVehicle, 18) then return QBCore.Functions.Notify(Lang:t("error.no_turbo"), "error") end
-    if Config.EngineOff and GetIsVehicleEngineRunning(currentVehicle) then return QBCore.Functions.Notify(Lang:t("error.engine_on"), "error") end
-
-    QBCore.Functions.Progressbar("use_nos", Lang:t("progressbar.load_nitrous"), Config.ConnectNitrous, false, true, {
-        disableMovement = false,
-        disableCarMovement = false,
-        disableMouse = false,
-        disableCombat = true,
-    }, {}, {}, {}, function()
-        if Config.EngineOff and GetIsVehicleEngineRunning(currentVehicle) then return QBCore.Functions.Notify(Lang:t("error.engine_remain_off"), "error") end
-        TriggerServerEvent('brazzers-nitrous:client:setNitrousBottle', 'Empty')
-        TriggerServerEvent('nitrous:server:LoadNitrous', plate)
-	end, function()
-		QBCore.Functions.Notify(Lang:t("error.canceled"), "error")
-    end)
-end)
-
-RegisterNetEvent('nitrous:client:StopSync', function(plate)
-    for _, v in pairs(NOSPFX[plate]) do
-        StopParticleFxLooped(v.pfx, 1)
-        NOSPFX[plate][_].pfx = nil
-    end
-end)
-
-RegisterNetEvent('nitrous:client:UpdateNitroLevel', function(plate, level)
-    VehicleNitrous[plate].level = level
-end)
-
-RegisterNetEvent('nitrous:client:LoadNitrous', function(plate)
-    VehicleNitrous[plate] = {
-        hasnitro = true,
-        level = 100,
-    }
-    local CurrentVehicle = GetVehiclePedIsIn(PlayerPedId())
-    local CPlate = trim(GetVehicleNumberPlateText(CurrentVehicle))
-    if CPlate == plate then
-        TriggerEvent('hud:client:UpdateNitrous', VehicleNitrous[plate].hasnitro,  VehicleNitrous[plate].level, false)
-    end
-end)
-
-RegisterNetEvent('nitrous:client:UnloadNitrous', function(plate)
-    VehicleNitrous[plate] = nil
-    local CurrentVehicle = GetVehiclePedIsIn(PlayerPedId())
-    local CPlate = trim(GetVehicleNumberPlateText(CurrentVehicle))
-    if CPlate == plate then
-        nitrousActivated = false
-        TriggerEvent('hud:client:UpdateNitrous', false, nil, false)
-    end
-end)
-
-RegisterNetEvent('nitrous:client:SyncFlames', function(netid, nosid, coords, rate)
-    local veh = NetToVeh(netid)
-	local meCoords = GetEntityCoords(PlayerPedId())
-	local distance = #(coords - meCoords)
-	if distance < 200 then
-		if veh ~= 0 then
-			local myid = GetPlayerServerId(PlayerId())
-			if NOSPFX[trim(GetVehicleNumberPlateText(veh))] == nil then
-				NOSPFX[trim(GetVehicleNumberPlateText(veh))] = {}
-			end
-			if myid ~= nosid then
-				for _,bones in pairs(p_flame_location) do
-					if NOSPFX[trim(GetVehicleNumberPlateText(veh))][bones] == nil then
-						NOSPFX[trim(GetVehicleNumberPlateText(veh))][bones] = {}
-					end
-					if GetEntityBoneIndexByName(veh, bones) ~= -1 then
-						if NOSPFX[trim(GetVehicleNumberPlateText(veh))][bones].pfx == nil then
-							RequestNamedPtfxAsset(ParticleDict)
-							while not HasNamedPtfxAssetLoaded(ParticleDict) do
-								Wait(0)
-							end
-							SetPtfxAssetNextCall(ParticleDict)
-							UseParticleFxAssetNextCall(ParticleDict)
-							NOSPFX[trim(GetVehicleNumberPlateText(veh))][bones].pfx = StartParticleFxLoopedOnEntityBone(ParticleFx, veh, 0.0, -0.05, 0.0, 0.0, 0.0, 0.0, GetEntityBoneIndexByName(veh, bones), rate, 0.0, 0.0, 0.0)
-							SetVehicleBoostActive(veh, 1)
-						end
-					end
-				end
-			end
-		end
-	end
-end)
-
-RegisterNetEvent('brazzers-nitrous:client:particlePurge', function(netId, purgeid, coords, toggle)
-	local veh = NetToVeh(netId)
-	local meCoords = GetEntityCoords(PlayerPedId())
-	local distance = #(coords - meCoords)
-	if distance < 200 then
-		local plate = trim(GetVehicleNumberPlateText(veh))
-		enablePurgeMode(veh, plate, toggle)
-	end
-end)
-
-RegisterNetEvent("brazzers-nitrous:client:refillNitrous", function()
-	if not hasNitrous() then return QBCore.Functions.Notify(Lang:t("error.no_nitrous"), "error") end
-
-	QBCore.Functions.Progressbar("filling_nitrous", Lang:t("progressbar.fill_nitrous"), 15000, false, false, {
-		  disableMovement = true,
-		  disableCarMovement = false,
-		  disableMouse = false,
-		  disableCombat = true,
-	}, {}, {}, {}, function()
-		TriggerServerEvent("brazzers-nitrous:client:setNitrousBottle", 'Filled')
-	end, function()
-		QBCore.Functions.Notify(Lang:t("error.canceled"), "error")
-	end)
-end)
+RegisterKeyMapping("+decreaseflow", "Vehicle: Decrease Flow Rate", "keyboard", "DOWN")
 
 -- Threads
 
 CreateThread(function()
+    local wait = 1500
     while true do
-        local IsInVehicle = IsPedInAnyVehicle(PlayerPedId())
-        local CurrentVehicle = GetVehiclePedIsIn(PlayerPedId())
-        if IsInVehicle then
-            local plate = trim(GetVehicleNumberPlateText(CurrentVehicle))
-            if VehicleNitrous[plate] then
-                if VehicleNitrous[plate].hasnitro then
-					if nitroMode then
-						if IsControlJustPressed(0, 36) and GetPedInVehicleSeat(CurrentVehicle, -1) == PlayerPedId() then
-							SetVehicleEnginePowerMultiplier(CurrentVehicle, Config.FlowRate[flowRate]['boost'])
-							nitrousActivated = true
+        Wait(wait)
+        if vehicle ~= 0 and hasNitrous(vehicle) then
+            wait = 500
+            noslvl, purgelvl, flowrate = getValuesNOS(vehicle)
+            nitrousMode = getCurrentMode(vehicle)
 
-							CreateThread(function()
-								while nitrousActivated do
-									if VehicleNitrous[plate].level - Config.FlowRate[flowRate]['consumption'] > 0 then
-										TriggerServerEvent('nitrous:server:UpdateNitroLevel', plate, (VehicleNitrous[plate].level - Config.FlowRate[flowRate]['consumption']))
-										TriggerEvent('hud:client:UpdateNitrous', VehicleNitrous[plate].hasnitro,  VehicleNitrous[plate].level, true)
-									else
-										TriggerServerEvent('nitrous:server:UnloadNitrous', plate)
-										nitrousActivated = false
-										nitroSoundEffect = false
-										purgeActivated = false
-										SetVehicleBoostActive(CurrentVehicle, 0)
-										SetVehicleEnginePowerMultiplier(CurrentVehicle, 1.0)
-										StopScreenEffect("RaceTurbo")
-										for index,_ in pairs(Fxs) do
-											StopParticleFxLooped(Fxs[index], 1)
-											TriggerServerEvent('nitrous:server:StopSync', trim(GetVehicleNumberPlateText(CurrentVehicle)))
-											Fxs[index] = nil
-										end
-									end
-									Wait(100)
-								end
-							end)
-						end
-					elseif purgeMode then
-						if IsControlJustPressed(0, 36) and GetPedInVehicleSeat(CurrentVehicle, -1) == PlayerPedId() then
-							SetVehicleBoostActive(CurrentVehicle, 1)
-							purgeActivated = true
-							TriggerServerEvent('brazzers-nitrous:server:particlePurge', VehToNet(CurrentVehicle), GetEntityCoords(PlayerPedId()), true)
+            if noslvl < 1 then
+                setNitrous(vehicle, false)
 
-							CreateThread(function()
-								while purgeActivated do
-									if VehicleNitrous[plate].level - Config.FlowRate[flowRate]['consumption'] > 0 then
-										TriggerServerEvent('nitrous:server:UpdateNitroLevel', plate, (VehicleNitrous[plate].level - Config.FlowRate[flowRate]['consumption']))
-										TriggerEvent('hud:client:UpdateNitrous', VehicleNitrous[plate].hasnitro,  VehicleNitrous[plate].level, true)
-									else
-										TriggerServerEvent('nitrous:server:UnloadNitrous', plate)
-										nitrousActivated = false
-										purgeActivated = false
-										SetVehicleBoostActive(CurrentVehicle, 0)
-									end
-									Wait(100)
-								end
-							end)
-						end
+                activated = false
+                TriggerServerEvent("brazzers-nitrous:flames", false)
+                SetVehicleBoostActive(vehicle, activated)
+                SetVehicleCheatPowerIncrease(vehicle, 1.0)
+                screen = false
+                StopGameplayCamShaking(true)
+                SetTransitionTimecycleModifier("default", 0.35)
+                EnableVehicleExhaustPops(vehicle, true)
+                updateUI(false, nil)
+            end
+
+            if activated and noslvl > 0 then
+                local lvl = noslvl - Config.FlowRate[flowrate].consumption
+				if lvl < 0 then lvl = 0 end
+                DecorSetFloat(vehicle, "BRAZZERS_NITRO_NOS", lvl)
+                updateUI(true, lvl)
+
+                if Config.IncreasePressure then
+                    if purgelvl < 100 then
+                        local lvl = purgelvl + Config.FlowRate[flowrate].consumption * Config.PressureMultiplier
+                        DecorSetFloat(vehicle, "BRAZZERS_NITRO_PURGE", lvl)
                     end
-
-					-- Releasing Controls
-
-					if nitroMode then
-						if IsControlJustReleased(0, 36) and GetPedInVehicleSeat(CurrentVehicle, -1) == PlayerPedId() then
-							if nitrousActivated then
-								local veh = GetVehiclePedIsIn(PlayerPedId())
-								SetVehicleBoostActive(veh, 0)
-								SetVehicleEnginePowerMultiplier(veh, 1.0)
-								for index,_ in pairs(Fxs) do
-									StopParticleFxLooped(Fxs[index], 1)
-									TriggerServerEvent('nitrous:server:StopSync', trim(GetVehicleNumberPlateText(veh)))
-									Fxs[index] = nil
-								end
-								StopScreenEffect("RaceTurbo")
-								TriggerEvent('hud:client:UpdateNitrous', VehicleNitrous[plate].hasnitro,  VehicleNitrous[plate].level, false)
-								nitroSoundEffect = false
-								nitrousActivated = false
-							end
-						end
-					elseif purgeMode then
-						if IsControlJustReleased(0, 36) and GetPedInVehicleSeat(CurrentVehicle, -1) == PlayerPedId() then
-							if purgeActivated then
-								TriggerServerEvent('brazzers-nitrous:server:particlePurge', VehToNet(CurrentVehicle), GetEntityCoords(PlayerPedId()), false)
-								TriggerEvent('hud:client:UpdateNitrous', VehicleNitrous[plate].hasnitro,  VehicleNitrous[plate].level, false)
-								purgeActivated = false
-							end
-						end
-					end
                 end
-            else
-                if not nosUpdated then
-                    TriggerEvent('hud:client:UpdateNitrous', false, nil, false)
-                    nosUpdated = true
-                end
-                StopScreenEffect("RaceTurbo")
+            end
+
+            if purging and purgelvl > 0 then
+                local lvl = purgelvl - Config.FlowRate[flowrate].consumption * Config.PurgeConsumptionMultiplier
+				if lvl < 0 then lvl = 0 end
+                DecorSetFloat(vehicle, "BRAZZERS_NITRO_PURGE", lvl)
+            elseif purging and purgelvl <= 0 and Config.DecreaseNitrous then
+                local lvl = noslvl - Config.FlowRate[flowrate].consumption
+                DecorSetFloat(vehicle, "BRAZZERS_NITRO_NOS", lvl)
+                updateUI(true, lvl)
             end
         else
-            if nosUpdated then
-                nosUpdated = false
-            end
-            StopScreenEffect("RaceTurbo")
-            Wait(1500)
+            wait = 1500
         end
-        Wait(3)
     end
 end)
 
 CreateThread(function()
+    Wait(500)
+    local model = GetEntityModel(vehicle)
+    local maxSpeed = GetVehicleModelMaxSpeed(model)
+    local wait = 500
     while true do
-        if nitrousActivated then
-            local veh = GetVehiclePedIsIn(PlayerPedId())
-			local pedCoords = GetEntityCoords(PlayerPedId())
-            if veh ~= 0 then
-                TriggerServerEvent('nitrous:server:SyncFlames', VehToNet(veh), pedCoords, Config.FlowRate[flowRate]['flow'])
-				if not nitroSoundEffect then
-					SetVehicleBoostActive(veh, 1)
-					nitroSoundEffect = true
-				end
+        Wait(wait)
+        if noslvl > 0 and purgelvl < 100 then
+            if activated then
+                wait = 0
 
-                for _,bones in pairs(p_flame_location) do
-                    if GetEntityBoneIndexByName(veh, bones) ~= -1 then
-                        if Fxs[bones] == nil then
-                            RequestNamedPtfxAsset(ParticleDict)
-                            while not HasNamedPtfxAssetLoaded(ParticleDict) do
-                                Wait(0)
-                            end
-                            SetPtfxAssetNextCall(ParticleDict)
-                            UseParticleFxAssetNextCall(ParticleDict)
-                            Fxs[bones] = StartParticleFxLoopedOnEntityBone(ParticleFx, veh, 0.0, -0.02, 0.0, 0.0, 0.0, 0.0, GetEntityBoneIndexByName(veh, bones), Config.FlowRate[flowRate]['flow'], 0.0, 0.0, 0.0)
-                        end
-                    end
+                local speed = GetEntitySpeed(vehicle)
+                local mph = speed * 2.236936
+
+                local thisModel = GetEntityModel(vehicle)
+                if model ~= thisModel or maxSpeed == 0 then
+                    model = thisModel
+                    maxSpeed = GetVehicleModelMaxSpeed(model)
                 end
+
+                if mph < 5.0 then
+                    SetControlNormal(0, 71, 0.5)
+                else
+                    SetVehicleEnginePowerMultiplier(vehicle, Config.FlowRate[flowrate].power * 1.5)
+                end
+
+                if screen and mph < Config.ScreenSpeed then
+                    screen = false
+                    StopGameplayCamShaking(true)
+                    SetTransitionTimecycleModifier("default", 0.35)
+                elseif not screen and mph > Config.ScreenSpeed and Config.ScreenShake then
+                    screen = true
+                    SetTimecycleModifier("rply_motionblur")
+                    ShakeGameplayCam("SKY_DIVING_SHAKE", 0.25)
+                end
+
+                EnableVehicleExhaustPops(vehicle, false)
+            else
+                wait = 500
+                SetVehicleEnginePowerMultiplier(vehicle, 1.0)
             end
+        elseif activated then
+            wait = 500
+            activated = false
+            TriggerServerEvent("brazzers-nitrous:flames", false)
+            SetVehicleBoostActive(vehicle, activated)
+            SetVehicleCheatPowerIncrease(vehicle, 1.0)
+            screen = false
+            StopGameplayCamShaking(true)
+            SetTransitionTimecycleModifier("default", 0.35)
+            EnableVehicleExhaustPops(vehicle, true)
+        else
+            wait = 500
+            SetVehicleEnginePowerMultiplier(vehicle, 1.0)
         end
-		if not nitrousActivated then
-			Wait(100)
-		end
-        Wait(0)
     end
 end)
 
-if Config.EnablePed then
-	exports[Config.Target]:SpawnPed({
-		model = Config.Ped,
-		coords = Config.PedLocation,
-		minusOne = true,
-		freeze = true,
-		invincible = true,
-		blockevents = true,
-		scenario = 'WORLD_HUMAN_GUARD_STAND',
-		target = {
-			options = {
-				{
-					type = "client",
-					event = "brazzers-nitrous:client:refillNitrous",
-					icon = "fas fa-fill",
-					label = "Refill Nitrous",
-				}
-			},
-			distance = 2.5,
-		},
-	})
-end
+CreateThread(function()
+	while true do
+		Wait(500)
+		if not isInVehicle and not IsPlayerDead(player) then
+            local vehicle = GetVehiclePedIsTryingToEnter(cache.ped)
+			if vehicle ~= 0 and hasNitrous(vehicle) and not isEnteringVehicle and GetPedInVehicleSeat(vehicle, -1) then
+                -- trying to enter a vehicle!
+				isEnteringVehicle = true
+                vehicle = vehicle
+                updateUI(true, noslvl)
+			elseif vehicle == 0 and hasNitrous(vehicle) and not IsPedInAnyVehicle(cache.ped, true) and isEnteringVehicle then
+				-- vehicle entering aborted
+				isEnteringVehicle = false
+			elseif IsPedInAnyVehicle(cache.ped, false) then
+				-- suddenly appeared in a vehicle, possible teleport
+				isEnteringVehicle = false
+				isInVehicle = true
+				vehicle = GetVehiclePedIsUsing(cache.ped)
+			end
+		elseif isInVehicle then
+			if not IsPedInAnyVehicle(cache.ped, false) or IsPlayerDead(player) then
+				-- left vehicle
+				isInVehicle = false
+                updateUI(false, nil)
+
+                if activated then
+                    activated = false
+                    TriggerServerEvent("brazzers-nitrous:flames", false, VehToNet(vehicle))
+                    SetVehicleBoostActive(vehicle, activated)
+                    SetVehicleCheatPowerIncrease(vehicle, 1.0)
+                end
+                if screen then
+                    screen = false
+                    StopGameplayCamShaking(true)
+                    SetTransitionTimecycleModifier("default", 0.35)
+                    Wait(1000)
+                    EnableVehicleExhaustPops(vehicle, true)
+                end
+                if purging then
+                    purging = false
+                    TriggerServerEvent("brazzers-nitrous:setPurge", false, VehToNet(vehicle))
+                end
+			end
+		end
+		Wait(50)
+	end
+end)
+
+-- Global
+
+AddStateBagChangeHandler("brazzers_flames", nil, function(bagName, _, value, _, _)
+    if value == nil then return end
+    Wait(50)
+
+    local netId = tonumber(bagName:gsub("entity:", ""), 10)
+    local entity = NetworkDoesNetworkIdExist(netId) and NetworkGetEntityFromNetworkId(netId)
+    if not entity then return end
+
+	lib.requestNamedPtfxAsset('veh_xs_vehicle_mods', 10)
+    SetVehicleNitroEnabled(entity, value, 2.5, 1.1, 4.0, false)
+end)
+
+AddStateBagChangeHandler("brazzers_purge", nil, function(bagName, _, value, _, _)
+    if value == nil then return end
+    Wait(50)
+
+    local netId = tonumber(bagName:gsub("entity:", ""), 10)
+    local entity = NetworkDoesNetworkIdExist(netId) and NetworkGetEntityFromNetworkId(netId)
+    if not entity then return end
+
+	local _, _, flowrate = getValuesNOS(entity)
+
+    if value then
+        local bone = GetEntityBoneIndexByName(entity, "bonnet")
+        local pos = GetWorldPositionOfEntityBone(entity, bone)
+        local off = GetOffsetFromEntityGivenWorldCoords(entity, pos.x, pos.y, pos.z)
+        if bone ~= -1 then
+            UseParticleFxAssetNextCall("core")
+            local leftPurge = StartParticleFxLoopedOnEntity("ent_sht_steam", entity, off.x - 0.5, off.y + 0.05, off.z, 40.0, -20.0, 0.0, Config.FlowRate[flowrate].flow, false, false, false)
+            UseParticleFxAssetNextCall("core")
+            local rightPurge = StartParticleFxLoopedOnEntity("ent_sht_steam", entity, off.x + 0.5, off.y + 0.05, off.z, 40.0, 20.0, 0.0, Config.FlowRate[flowrate].flow, false, false, false)
+            purge[entity] = {left = leftPurge, right = rightPurge}
+            return
+        end
+        local bone = GetEntityBoneIndexByName(entity, "engine")
+        local pos = GetWorldPositionOfEntityBone(entity, bone)
+        local off = GetOffsetFromEntityGivenWorldCoords(entity, pos.x, pos.y, pos.z)
+        UseParticleFxAssetNextCall("core")
+        local leftPurge = StartParticleFxLoopedOnEntity("ent_sht_steam", entity, off.x - 0.5, off.y - 0.2, off.z + 0.2, 40.0, -20.0, 0.0, Config.FlowRate[flowrate].flow, false, false, false)
+        UseParticleFxAssetNextCall("core")
+        local rightPurge = StartParticleFxLoopedOnEntity("ent_sht_steam", entity, off.x + 0.5, off.y - 0.2, off.z + 0.2, 40.0, 20.0, 0.0, Config.FlowRate[flowrate].flow, false, false, false)
+        purge[entity] = {left = leftPurge, right = rightPurge}
+    else
+        StopParticleFxLooped(purge[entity].left)
+        StopParticleFxLooped(purge[entity].right)
+        purge[entity] = nil
+    end
+end)
+
+-- Decor
+
+DecorRegister("BRAZZERS_NITRO_STATUS", 2)
+DecorRegister("BRAZZERS_MODE", 2)
+DecorRegister("BRAZZERS_NITRO_NOS", 1)
+DecorRegister("BRAZZERS_NITRO_PURGE", 1)
+DecorRegister("BRAZZERS_FLOWRATE", 1)

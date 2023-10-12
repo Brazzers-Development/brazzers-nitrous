@@ -3,11 +3,9 @@ game 'gta5'
 
 name "Brazzers Nitrous"
 author "Brazzers Development | MannyOnBrazzers#6826"
-version "1.1"
+version "2.0"
 
 lua54 'yes'
-
-ui_page 'html/index.html'
 
 client_scripts {
     'client/*.lua',
@@ -18,19 +16,13 @@ server_scripts {
 }
 
 shared_scripts {
-	'@qb-core/shared/locale.lua',
-	'locales/*.lua',
+	'@ox_lib/init.lua', -- Required
 	'shared/*.lua',
 }
 
-files {
-    'html/*',
-}
-
 escrow_ignore {
-    'client/*.lua',
-	'server/*.lua',
-	'locales/*.lua',
+    'client/open.lua',
+    'server/open.lua',
 	'shared/*.lua',
 	'README/*lua',
 }

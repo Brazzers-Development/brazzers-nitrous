@@ -18,42 +18,30 @@
 
 # Installation steps
 
-## General Setup
-Advanced and unique nitrous system featuring flowrate, purge mode, and more all working on the synced version of qb-tunerchip's nitrous system. This script only includes the nitrous portion of the tunerchip script and not the tunerchip itself. The list of full features are down below
-
-Preview: https://youtu.be/-cWlexmU0x8
-
-## Installation Default QBCore Garages
-If you're to lazy to do this, I included the drag and drop of qb-inventory server.lua in the files lazy fuck
-
-Locate your QBCore.Commands.Add("giveitem" command in your qb-inventory > main.lua and add the itemData snippet to it: 
+Add this to your items.lua in ox_inventory:
 ```lua
-	elseif itemData["name"] == "nitrous" then
-		info.status = "Filled"
-```
-Locate FormatItemInfo function in your qb-inventory > html > js > app.js file and add the itemData snippet below:
-```js
-    else if (itemData.name == "nitrous") {
-        $(".item-info-title").html("<p>" + itemData.label + "</p>");
-        $(".item-info-description").html(
-            "<p>" + itemData.info.status + " nitrous bottle</p>"
-        );
-    }
+
+	["nitrous"] = {
+		label = "Nitrous Oxide",
+		weight = 35000,
+		stack = false,
+		client = {
+			image = "nitrous.png",
+			export = 'brazzers-nitrous.nitrous',
+		}
+	},
+
 ```
 
-## Credits
-QBCore - Original maker of the nitrous system. I just cleaned it up and added a ton of features (https://github.com/qbcore-framework/qb-tunerchip)
-13Stewartc - Blue/ Purple Backfire (https://www.gta5-mods.com/misc/purple-blue-flames-replace-sp-fivem)
+Drag and drop the resource into your resource list and you're done.
 
 ## Features
-1. Flowrate System - Allowing players to cycle nitrous/ purge flow rate effecting consumption, boost, and more!
-2. Ability To Increase & Decrease Flowrate On the Spot With A Keybind
-3. Ability To Refill Nitrous Bottles When Empty
-4. Fully Synced Nitrous & Purge System ( Syncing The Flow Rate Too )
-5. Fully Open Sourced ( No Encryption )
-6. Multi-Language Support using QBCore Locales
-7. 24/7 Support in discord
-
+1. Nitrous flowrate based system - Players are able to cycle nitrous/ purge flow rates effecting consumption, boost, and more
+2. Nitrous states are all handled utilizing state bags
+3. Nitrous flow/ purge is all synced across all clients
+4. Extensive Config
+5. Multi-Language Support
+6. 
 ## Dependencies
-1. qb-target
-2. qb-inventory
+1. ox_lib
+2. ox_inventory
